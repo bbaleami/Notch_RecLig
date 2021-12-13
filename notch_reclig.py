@@ -236,7 +236,7 @@ print(model.rules)
 
 
 # define observables
-Observable('notch1_bound_ all', NOTCH1(lig = ANY))
+Observable('notch1_bound_all', NOTCH1(lig = ANY))
 Observable('notch1_unbound', NOTCH1(lig = None))
 # Observable('notch2_bound_all', NOTCH2(lig = ANY))
 # Observable('notch2_unbound', NOTCH2(lig = None))

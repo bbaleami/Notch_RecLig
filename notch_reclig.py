@@ -28,8 +28,8 @@ Monomer('RBPJ', ['nicd', 'maml', 'gene1', 'gene2'])
 Monomer('MAML', ['nicd', 'rbpj'])
 Monomer('GENE1', ['ntc'])
 Monomer('GENE2', ['ntc'])
-Monomer('GENE1_M')
-Monomer('GENE2_M')
+Monomer('GENE1_MRNA')
+Monomer('GENE2_MRNA')
 
 #### define parameters ####
 # initial conditions
@@ -55,8 +55,8 @@ Parameter('rbpj_init', 0)
 Parameter('maml_init', 0)
 Parameter('gene1_init', 2)
 Parameter('gene2_init', 2)
-Parameter('gene1_m_init', 0)
-Parameter('gene2_m_init', 0)
+Parameter('gene1_mrna_init', 0)
+Parameter('gene2_mrna_init', 0)
 
 # rates for notch1 binding to ligands
 Parameter('kf_notch1_dll1_uf', 1)
@@ -245,8 +245,8 @@ Parameter('k_notch3_golgi_to_pm', 0)
 Parameter('k_notch4_golgi_to_pm', 0)
 
 # rates for notch activation
-Parameter('kcat_notch1_dll1', 0)
-Parameter('kcat_notch1_dll4', 0)
+Parameter('kcat_notch1_dll1', 1)
+Parameter('kcat_notch1_dll4', 0.1)
 Parameter('kcat_notch1_jag1', 0)
 Parameter('kcat_notch1_jag2', 0)
 Parameter('kcat_notch2_dll1', 0)
@@ -303,7 +303,7 @@ Parameter('k_notch3_ICD_deg', 0)
 Parameter('k_notch4_ICD_deg', 0)
 
 # rates for necd-ligand commplex degradation
-Parameter('k_notch1_ecd_dll1_deg', 0)
+Parameter('k_notch1_ecd_dll1_deg', 1)
 Parameter('k_notch1_ecd_dll4_deg', 0)
 Parameter('k_notch1_ecd_jag1_deg', 0)
 Parameter('k_notch1_ecd_jag2_deg', 0)
@@ -351,8 +351,8 @@ Initial(RBPJ(nicd = None, maml = None, gene1 = None, gene2 = None), rbpj_init)
 Initial(MAML(nicd = None, rbpj = None), maml_init)
 Initial(GENE1(ntc = None), gene1_init)
 Initial(GENE2(ntc = None), gene2_init)
-Initial(GENE1_M(), gene1_m_init)
-Initial(GENE2_M(), gene2_m_init)
+Initial(GENE1_MRNA(), gene1_mrna_init)
+Initial(GENE2_MRNA(), gene2_mrna_init)
 
 # print(model)
 # print(model.monomers)
@@ -397,10 +397,10 @@ fuc = ['uf', 'f1', 'f2']
  for y in rec for x in fuc]
 # notch4 reversibly binds to other notch receptors
 [Rule('notch4_binds_%s' % y.lower(),
-      NOTCH4_ICD(loc = 'golgi') % NOTCH4_ECD(lig = None, loc = 'golgi') + mon[y + '_ICD'](loc = 'golgi') % mon[y + '_ECD'](lig = None, loc = 'golgi') |
-      NOTCH4_ICD(loc = 'golgi') % NOTCH4_ECD(lig = 2, loc = 'golgi') % mon[y + '_ICD']( loc = 'golgi') % mon[y + '_ECD'](lig = 2, loc = 'golgi'),
+      NOTCH4_ICD(ecd = ANY, loc = 'golgi') % NOTCH4_ECD(icd = ANY, lig = None, loc = 'golgi') + mon[y + '_ICD'](ecd = ANY, loc = 'golgi') % mon[y + '_ECD'](icd = ANY, lig = None, loc = 'golgi') |
+      NOTCH4_ICD(ecd = ANY, loc = 'golgi') % NOTCH4_ECD(icd = ANY, lig = 2, loc = 'golgi') % mon[y + '_ICD'](ecd = ANY, loc = 'golgi') % mon[y + '_ECD'](icd = ANY, lig = 2, loc = 'golgi'),
       par['kf_notch4_%s' % y.lower()], par['kr_notch4_%s' % y.lower()])
- for y in rec[0:3]]
+ for y in rec[0:-1]]
 
 # relocating notch receptors from golgi to plasma membrane
 [Rule('%s_goes_to_PM' % y.lower(),
@@ -439,7 +439,7 @@ fuc = ['uf', 'f1', 'f2']
 # transcription of target gene
 [Rule('gene1_transcription_under_%s_ntc' % y.lower(),
       mon[y + '_ICD'](rbpj = 1, maml = 2, loc = 'nuc') % RBPJ(nicd = 1, maml = 3, gene1 = 4) % MAML(nicd = 2, rbpj = 3) % GENE1(ntc = 4) >>
-      mon[y + '_ICD'](rbpj = 1, maml = 2, loc = 'nuc') % RBPJ(nicd = 1, maml = 3, gene1 = 4) % MAML(nicd = 2, rbpj = 3) % GENE1(ntc = 4) + GENE1_M(),
+      mon[y + '_ICD'](rbpj = 1, maml = 2, loc = 'nuc') % RBPJ(nicd = 1, maml = 3, gene1 = 4) % MAML(nicd = 2, rbpj = 3) % GENE1(ntc = 4) + GENE1_MRNA(),
       par['kcat_gene1_transcription_%s_ntc' % y.lower()])
 for y in rec]
 
@@ -460,81 +460,31 @@ print(model.rules)
 print()
 print(model)
 
+# define observables
+Observable('notch1_bound_all', NOTCH1_ECD(lig = ANY))
+Observable('notch1_unbound_all', NOTCH1_ECD(lig = None))
+Observable('dll1_trans_bound', DLL1(rec = ANY, loc = 'trans'))
+Observable('notch1_bound_dll1_trans_pm', NOTCH1_ICD(ecd = ANY) % NOTCH1_ECD(icd = ANY, lig = 2) % DLL1(rec = 2, loc = 'trans'))
+Observable('notch1_ecd_bound_dll1_trans', NOTCH1_ECD(icd = None, lig = 2) % DLL1(rec = 2, loc = 'trans'))
 
 #
-# # define observables
-# Observable('notch1_bound_all', NOTCH1(lig = ANY))
-# Observable('notch1_unbound', NOTCH1(lig = None))
-# # Observable('notch2_bound_all', NOTCH2(lig = ANY))
-# # Observable('notch2_unbound', NOTCH2(lig = None))
-# # Observable('notch3_bound_all', NOTCH3(lig = ANY))
-# # Observable('notch3_unbound', NOTCH3(lig = None))
-# # Observable('notch4_bound_all', NOTCH4(lig = ANY))
-# # Observable('notch4_unbound', NOTCH4(lig = None))
-# # Observable('dll1_trans_all', DLL1(rec = ANY, loc = 'trans'))
-# Observable('dll1_trans_unbound', DLL1(rec = None, loc = 'trans'))
-# # Observable('dll1_cis_all', DLL1(rec = ANY, loc = 'cis'))
-# # Observable('dll1_cis_unbound', DLL1(rec = None, loc = 'cis'))
-# # Observable('dll3_trans_all', DLL3(rec = ANY, loc = 'trans'))
-# # Observable('dll3_trans_unbound', DLL3(rec = None, loc = 'trans'))
-# # Observable('dll3_cis_all', DLL3(rec = ANY, loc = 'cis'))
-# # Observable('dll3_cis_unbound', DLL3(rec = None, loc = 'cis'))
-# # Observable('dll4_trans_all', DLL4(rec = ANY, loc = 'trans'))
-# # Observable('dll4_trans_unbound', DLL4(rec = None, loc = 'trans'))
-# # Observable('dll4_cis_all', DLL4(rec = ANY, loc = 'cis'))
-# # Observable('dll4_cis_unbound', DLL4(rec = None, loc = 'cis'))
-# # Observable('jag1_trans_all', JAG1(rec = ANY, loc = 'trans'))
-# # Observable('jag1_trans_unbound', JAG1(rec = None, loc = 'trans'))
-# # Observable('jag1_cis_all', JAG1(rec = ANY, loc = 'cis'))
-# # Observable('jag1_cis_unbound', JAG1(rec = None, loc = 'cis'))
-# # Observable('jag2_trans_all', JAG2(rec = ANY, loc = 'trans'))
-# # Observable('jag2_trans_unbound', JAG2(rec = None, loc = 'trans'))
-# # Observable('jag2_cis_all', JAG2(rec = ANY, loc = 'cis'))
-# # Observable('jag2_cis_unbound', JAG2(rec = None, loc = 'cis'))
+# # simulation commands
+# tspan = np.linspace(0, 1, 101)
 #
-# Observable('notch1_bound_dll1_trans', NOTCH1(lig = 1) % DLL1(rec = 1, loc = 'trans'))
-# # Observable('notch1_bound_dll1_cis', NOTCH1(lig = 11) % DLL1(rec = 11, loc = 'cis'))
-# # Observable('notch1_bound_dll3_trans', NOTCH1(lig = 13) % DLL3(rec = 13, loc = 'trans'))
-# # Observable('notch1_bound_dll3_cis', NOTCH1(lig = 13) % DLL3(rec = 13, loc = 'cis'))
-# # Observable('notch1_bound_dll4_trans', NOTCH1(lig = 14) % DLL4(rec = 14, loc = 'trans'))
-# # Observable('notch1_bound_dll4_cis', NOTCH1(lig = 14) % DLL4(rec = 14, loc = 'cis'))
-# # Observable('notch1_bound_jag1_trans', NOTCH1(lig = 15) % JAG1(rec = 15, loc = 'trans'))
-# # Observable('notch1_bound_jag1_cis', NOTCH1(lig = 15) % JAG1(rec = 15, loc = 'cis'))
-# # Observable('notch1_bound_jag2_trans', NOTCH1(lig = 16) % JAG2(rec = 16, loc = 'trans'))
-# # Observable('notch1_bound_jag2_cis', NOTCH1(lig = 16) % JAG2(rec = 16, loc = 'cis'))
-# #
-# # Observable('notch2_bound_dll1_trans', NOTCH2(lig = 21) % DLL1(rec = 21, loc = 'trans'))
-# # Observable('notch2_bound_dll1_cis', NOTCH2(lig = 21) % DLL1(rec = 21, loc = 'cis'))
-# # Observable('notch2_bound_dll3_trans', NOTCH2(lig = 23) % DLL3(rec = 23, loc = 'trans'))
-# # Observable('notch2_bound_dll3_cis', NOTCH2(lig = 23) % DLL3(rec = 23, loc = 'cis'))
-# # Observable('notch2_bound_dll4_trans', NOTCH2(lig = 24) % DLL4(rec = 24, loc = 'trans'))
-# # Observable('notch2_bound_dll4_cis', NOTCH2(lig = 24) % DLL4(rec = 24, loc = 'cis'))
-# # Observable('notch2_bound_jag1_trans', NOTCH2(lig = 25) % JAG1(rec = 25, loc = 'trans'))
-# # Observable('notch2_bound_jag1_cis', NOTCH2(lig = 25) % JAG1(rec = 25, loc = 'cis'))
-# # Observable('notch2_bound_jag2_trans', NOTCH2(lig = 26) % JAG2(rec = 26, loc = 'trans'))
-# # Observable('notch2_bound_jag2_cis', NOTCH2(lig = 26) % JAG2(rec = 26, loc = 'cis'))
-# #
-# # Observable('notch3_bound_dll1_trans', NOTCH3(lig = 31) % DLL1(rec = 31, loc = 'trans'))
-# # Observable('notch3_bound_dll1_cis', NOTCH3(lig = 31) % DLL1(rec = 31, loc = 'cis'))
-# # Observable('notch3_bound_dll3_trans', NOTCH3(lig = 33) % DLL3(rec = 33, loc = 'trans'))
-# # Observable('notch3_bound_dll3_cis', NOTCH3(lig = 33) % DLL3(rec = 33, loc = 'cis'))
-# # Observable('notch3_bound_dll4_trans', NOTCH3(lig = 34) % DLL4(rec = 34, loc = 'trans'))
-# # Observable('notch3_bound_dll4_cis', NOTCH3(lig = 34) % DLL4(rec = 34, loc = 'cis'))
-# # Observable('notch3_bound_jag1_trans', NOTCH3(lig = 35) % JAG1(rec = 35, loc = 'trans'))
-# # Observable('notch3_bound_jag1_cis', NOTCH3(lig = 35) % JAG1(rec = 35, loc = 'cis'))
-# # Observable('notch3_bound_jag2_trans', NOTCH3(lig = 36) % JAG2(rec = 36, loc = 'trans'))
-# # Observable('notch3_bound_jag2_cis', NOTCH3(lig = 36) % JAG2(rec = 36, loc = 'cis'))
-# #
-# # Observable('notch4_bound_dll1_trans', NOTCH4(lig = 41) % DLL1(rec = 41, loc = 'trans'))
-# # Observable('notch4_bound_dll1_cis', NOTCH4(lig = 41) % DLL1(rec = 41, loc = 'cis'))
-# # Observable('notch4_bound_dll3_trans', NOTCH4(lig = 43) % DLL3(rec = 43, loc = 'trans'))
-# # Observable('notch4_bound_dll3_cis', NOTCH4(lig = 43) % DLL3(rec = 43, loc = 'cis'))
-# # Observable('notch4_bound_dll4_trans', NOTCH4(lig = 44) % DLL4(rec = 44, loc = 'trans'))
-# # Observable('notch4_bound_dll4_cis', NOTCH4(lig = 44) % DLL4(rec = 44, loc = 'cis'))
-# # Observable('notch4_bound_jag1_trans', NOTCH4(lig = 45) % JAG1(rec = 45, loc = 'trans'))
-# # Observable('notch4_bound_jag1_cis', NOTCH4(lig = 45) % JAG1(rec = 45, loc = 'cis'))
-# # Observable('notch4_bound_jag2_trans', NOTCH4(lig = 46) % JAG2(rec = 46, loc = 'trans'))
-# # Observable('notch4_bound_jag2_cis', NOTCH4(lig = 46) % JAG2(rec = 46, loc = 'cis'))
+# sim = ScipyOdeSimulator(model, tspan, verbose = True)
+#
+# output = sim.run()
+#
+# plt.figure()
+# for obs in model.observables:
+#     plt.plot(tspan, output.observables[obs.name], lw = 2, label = obs.name)
+#
+# plt.xlabel('Time')
+# plt.ylabel('Concentration')
+# plt.legend(loc = 0)
+#
+# plt.show()
+
 #
 #
 # # simulation commands
